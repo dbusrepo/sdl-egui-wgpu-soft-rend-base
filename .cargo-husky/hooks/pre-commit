@@ -1,0 +1,3 @@
+cargo check -q && \
+cargo clippy -q && \
+cargo fmt -- -q --check

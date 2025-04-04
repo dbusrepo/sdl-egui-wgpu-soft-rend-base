@@ -1,0 +1,136 @@
+# https://github.com/rust-lang/rustc_codegen_cranelift
+# This line needs to come before anything else in Cargo.toml
+cargo-features = ["codegen-backend"]
+
+[package]
+name = "sdl_egui_wgpu_base"
+version = "0.1.0"
+edition = "2024"
+description = "Base project with sdl2, egui and wgpu for gpu rendering experiments"
+readme = "README.md"
+keywords = ["sdl2", "egui", "wgpu" ]
+categories = ["graphics"]
+repository = "https://github.com/dbusrepo/sdl_egui_wgpu_base.git"
+license = ""
+
+[target.'cfg(target_os = "linux")'.dependencies]
+tikv-jemallocator = "0.6.0"
+
+[dependencies]
+egui_sdl2_platform = { git = "https://github.com/dbusrepo/egui_sdl2_platform.git", version = "0.5.0" }
+egui_wgpu_backend = { git = "https://github.com/dbusrepo/egui_wgpu_backend.git", version = "0.35.0"  }
+egui = "0.31.1"
+anyhow = "1.0"
+pollster = "0.4.0"
+derive_builder = "0.20.2"
+enum-map = "2.7.3"
+nohash-hasher = "0.2.0"
+# colored = "3.0.0"
+# lru = "0.13.0"
+# byteorder = "1.5.0"
+# clap = { version = "4.5.35", features = ["derive"] }
+# num_cpus = "1.16.0"
+# strum = "0.27.1"
+# strum_macros = "0.27.1"
+# image = "0.25.6"
+# assert_approx_eq = "1.1.0"
+# float-cmp = "0.10.0"
+# fast_image_resize = "5.1.2"
+# rustc-hash = "2.1.1"
+# smallvec = "1.14.0"
+
+# [dev-dependencies]
+# cargo-husky = { version = "1.5.0", default-features = false, features = ["user-hooks"] }
+# commitlint-rs = "0.2.2"
+
+[profile.dev]
+debug = false
+strip = "debuginfo"
+opt-level = 1
+codegen-backend = "cranelift"
+# overflow-checks = false
+
+[profile.release]
+debug = false
+strip = "debuginfo"
+split-debuginfo = "unpacked"
+lto = true
+codegen-units = 1
+panic = "abort"
+
+[lints.rust]
+missing_copy_implementations = "warn"
+missing_debug_implementations = "warn"
+missing_docs = "warn"
+trivial_casts = "warn"
+trivial_numeric_casts = "warn"
+unsafe_code = "warn"
+unsafe_op_in_unsafe_fn = "warn"
+unused_results = "warn"
+unused_lifetimes = "warn"
+unused_extern_crates = "warn"
+unused_crate_dependencies = "warn"
+unused_import_braces = "warn"
+unused_qualifications = "warn"
+variant_size_differences = "warn"
+unreachable_pub = "warn"
+deprecated_safe_2024 = "warn"
+keyword_idents_2024 = "warn"
+edition_2024_expr_fragment_specifier = "warn"
+let_underscore_drop = "warn"
+unit_bindings = "warn"
+unnameable_types = "warn"
+redundant_imports = "warn"
+redundant_lifetimes = "warn"
+explicit_outlives_requirements = "warn"
+elided_lifetimes_in_paths = "warn"
+
+[lints.clippy]
+# all = "warn"
+pedantic = { level = "warn", priority = -1 }
+cargo = { level = "warn", priority = -1 }
+perf = { level = "warn", priority = -1 }
+style = { level = "warn", priority = -1 }
+complexity = { level = "warn", priority = -1 }
+correctness = { level = "warn", priority = -1 }
+suspicious = { level = "warn", priority = -1 }
+# nursery = "allow"
+# restriction = "warn"
+as_conversions = "warn"
+exit = "warn"
+dbg_macro = "warn"
+rc_mutex = "warn"
+unwrap_used = "warn"
+expect_used = "warn"
+panic = "warn"
+print_stdout = "warn"
+use_debug = "warn"
+shadow_reuse = "warn"
+shadow_same = "warn"
+shadow_unrelated = "warn"
+arithmetic_side_effects = "warn"
+unwrap_in_result = "warn"
+string_add_assign = "warn"
+string_add = "warn"
+string_lit_as_bytes = "warn"
+string_to_string = "warn"
+unimplemented = "warn"
+todo = "warn"
+debug_assert_with_mut_call = "warn"
+tuple_array_conversions = "warn"
+fallible_impl_from = "warn"
+float_cmp_const = "warn"
+imprecise_flops = "warn"
+large_stack_frames = "warn"
+lossy_float_literal = "warn"
+map_err_ignore = "warn"
+mem_forget = "warn"
+mutex_integer = "warn"
+path_buf_push_overwrite = "warn"
+rest_pat_in_fully_bound_structs = "warn"
+trait_duplication_in_bounds = "warn"
+verbose_file_reads = "warn"
+# allow_attributes_without_reason = "warn"
+# allow_attributes = "warn"
+absolute_paths = "warn"
+disallowed_types = "deny"

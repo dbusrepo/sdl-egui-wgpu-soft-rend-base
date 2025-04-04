@@ -1,0 +1,21 @@
+[build]
+# https://nnethercote.github.io/perf-book/profiling.html#symbol-demangling
+rustflags = ["-C", "symbol-mangling-version=v0"]
+# target = "x86_64-unknown-linux-gnu"
+# target = "aarch64-apple-darwin"
+
+[x86_64-unknown-linux-gnu]
+linker = "/usr/bin/clang-22"
+rustflags = [
+  "-Ctarget-cpu=native",
+  "-Clink-arg=-fuse-ld=mold",
+  "-Zthreads=8"
+]
+
+[target.aarch64-apple-darwin]
+linker = "/usr/bin/clang"
+rustflags = [
+  "-Ctarget-cpu=native",
+  # "-Clink-arg=-fuse-ld=lld",
+  "-Zthreads=8"
+]

@@ -1,0 +1,10 @@
+# https://doc.rust-lang.org/nightly/clippy/configuration.html
+# https://doc.rust-lang.org/nightly/clippy/lint_configuration.html
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true
+too-many-lines-threshold = 200
+cognitive-complexity-threshold = 30
+absolute-paths-max-segments = 3
+cargo-ignore-publish = true
+allowed-duplicate-crates = ["bitflags", "thiserror", "thiserror-impl"]
+# disallowed-types = ["std::collections::HashMap", "std::collections::HashSet"]
