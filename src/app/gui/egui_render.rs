@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use anyhow::{Result, anyhow};
+use anyhow::{Context, Result, anyhow};
 use egui::FullOutput;
 use egui::epaint::textures::TexturesDelta;
 use egui_sdl2_platform::platform::Platform;
@@ -62,12 +62,12 @@ impl<'a> EguiRender<'a> {
         let SdlWgpu { frame, encoder, .. } = &mut *sdl_wgpu;
 
         #[allow(clippy::shadow_reuse)]
-        let frame = frame.as_ref().ok_or_else(|| anyhow!("Failed to get frame"))?;
+        let frame = frame.as_ref().context("Failed to get frame")?;
 
         let frame_view = frame.texture.create_view(&TextureViewDescriptor::default());
 
         egui_pass.execute(
-            encoder.as_mut().ok_or_else(|| anyhow!("Failed to get the encoder"))?,
+            encoder.as_mut().context("Failed to get the encoder")?,
             &frame_view,
             &paint_jobs,
             &screen_descriptor,
@@ -78,10 +78,9 @@ impl<'a> EguiRender<'a> {
     }
 
     pub(super) fn clean(&mut self) -> Result<()> {
-        // Remove the textures from the render pass
         self.egui_pass
             .borrow_mut()
-            .remove_textures(self.tdelta.take().ok_or_else(|| anyhow!("No textures delta"))?)?;
+            .remove_textures(self.tdelta.take().context("No textures delta")?)?;
         Ok(())
     }
 }

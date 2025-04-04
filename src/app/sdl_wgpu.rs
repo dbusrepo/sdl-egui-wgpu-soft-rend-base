@@ -1,6 +1,6 @@
 #![allow(unused_results)]
 
-use anyhow::{Result, anyhow};
+use anyhow::{Context, Result, anyhow};
 use egui_sdl2_platform::sdl2;
 use egui_wgpu_backend::wgpu::{self, Features, Limits};
 use sdl2::video::Window;
@@ -61,7 +61,7 @@ impl SdlWgpu<'_> {
             compatible_surface:     Some(&surface),
         }));
 
-        let adapter = adapter_opt.ok_or_else(|| anyhow!("Failed to find wgpu adapter!"))?;
+        let adapter = adapter_opt.context("Failed to find wgpu adapter")?;
 
         let (device, queue) = match pollster::block_on(adapter.request_device(
             &DeviceDescriptor {
@@ -81,7 +81,7 @@ impl SdlWgpu<'_> {
             .formats
             .first()
             .copied()
-            .ok_or_else(|| anyhow!("No surface formats"))?;
+            .context("No surface formats")?;
 
         let surface_configuration = SurfaceConfiguration {
             present_mode: PresentMode::Fifo, // vsync enabled
@@ -91,7 +91,7 @@ impl SdlWgpu<'_> {
             view_formats: vec![TextureFormat::Bgra8UnormSrgb],
             ..surface
                 .get_default_config(&adapter, width, height)
-                .ok_or_else(|| anyhow!("Failed to get SurfaceConfiguration default config"))?
+                .context("Failed to get SurfaceConfiguration default config")?
         };
 
         surface.configure(&device, &surface_configuration);
@@ -127,15 +127,14 @@ impl SdlWgpu<'_> {
         Ok(())
     }
 
-    // #[allow(dead_code)]
     pub(super) fn clear(&mut self) -> Result<()> {
-        let frame = self.frame.as_ref().ok_or_else(|| anyhow!("Failed to get frame"))?;
+        let frame = self.frame.as_ref().context("Failed to get frame")?;
 
         let frame_view = frame.texture.create_view(&TextureViewDescriptor::default());
 
         let color = [0.0, 0.0, 0.0, 1.0];
 
-        let encoder = self.encoder.as_mut().ok_or_else(|| anyhow!("Failed to get the encoder"))?;
+        let encoder = self.encoder.as_mut().context("Failed to get the encoder")?;
 
         encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {

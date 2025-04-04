@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 use std::rc::{Rc, Weak};
 
-use anyhow::{Result, anyhow};
+use anyhow::{Context, Result, anyhow};
 mod egui_render;
 use egui_render::EguiRender;
 
@@ -79,14 +79,12 @@ impl<'a> Gui<'a> {
     }
 
     pub(super) fn render(&mut self) -> Result<()> {
-        let egui_render =
-            self.egui_render.as_mut().ok_or_else(|| anyhow!("EguiRender not initialized"))?;
+        let egui_render = self.egui_render.as_mut().context("EguiRender not initialized")?;
         egui_render.render()
     }
 
     pub(super) fn clean(&mut self) -> Result<()> {
-        let egui_render =
-            self.egui_render.as_mut().ok_or_else(|| anyhow!("EguiRender not initialized"))?;
+        let egui_render = self.egui_render.as_mut().context("EguiRender not initialized")?;
         egui_render.clean()
     }
 }
