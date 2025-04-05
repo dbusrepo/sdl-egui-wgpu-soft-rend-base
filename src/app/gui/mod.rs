@@ -3,19 +3,19 @@ use std::rc::{Rc, Weak};
 
 use anyhow::{Context, Result, anyhow};
 mod egui_render;
+use egui::Window;
 use egui_render::EguiRender;
 
 use super::App;
 
 pub(super) struct Gui<'a> {
-    app:               Option<Weak<RefCell<App<'a>>>>,
-    egui_render:       Option<EguiRender<'a>>,
-    checkbox1_checked: bool,
+    app:         Option<Weak<RefCell<App<'a>>>>,
+    egui_render: Option<EguiRender<'a>>,
 }
 
 impl<'a> Gui<'a> {
     pub(super) fn new() -> Self {
-        Self { app: None, egui_render: None, checkbox1_checked: false }
+        Self { app: None, egui_render: None }
     }
 
     pub(super) fn init_gui(&mut self, app_rc: &Rc<RefCell<App<'a>>>) {
@@ -43,10 +43,15 @@ impl<'a> Gui<'a> {
             return Err(anyhow!("App has been dropped"));
         };
         //
-        let _app = app_rc.borrow();
+        let app = app_rc.borrow();
         // let engine = app.engine_rc.borrow_mut();
 
-        egui::Window::new("Settings").resizable(true).vscroll(true).show(ctx, |ui| {
+        Window::new("Performance").show(ctx, |ui| {
+            ui.label(format!("Mean Frame Time: {:.2} ms", app.mean_frame_time_sec() * 1e3));
+            ui.label(format!("Mean FPS: {:.2}", app.fps()));
+        });
+
+        Window::new("Settings").resizable(true).vscroll(true).show(ctx, |ui| {
             ui.label("This");
             ui.label("is");
             ui.label("a");
@@ -62,7 +67,7 @@ impl<'a> Gui<'a> {
                 // println!("{}", app.get_msg());
                 println!("you pressed me!");
             }
-            ui.checkbox(&mut self.checkbox1_checked, "checkbox1");
+            // ui.checkbox(&mut self.checkbox1_checked, "checkbox1");
             ui.end_row();
             //     ui.label("Hello, world!");
             //     if ui.button("Greet").clicked() {

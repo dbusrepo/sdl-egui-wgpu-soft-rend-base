@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use anyhow::{Context, Result, anyhow};
+use anyhow::{Context, Result};
 use egui::FullOutput;
 use egui::epaint::textures::TexturesDelta;
 use egui_sdl2_platform::platform::Platform;
