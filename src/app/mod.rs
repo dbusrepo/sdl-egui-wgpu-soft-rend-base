@@ -100,6 +100,8 @@ impl App<'_> {
 
         app_rc.borrow().gui.borrow_mut().init_gui(&app_rc);
 
+        egui_logger::clear_log();
+
         Ok(app_rc)
     }
 

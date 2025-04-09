@@ -1,4 +1,4 @@
 /// The width of the application window.
-pub(crate) const WIDTH: u32 = 1280;
+pub(crate) const WIDTH: u32 = 1920;
 /// The height of the application window.
-pub(crate) const HEIGHT: u32 = 720;
+pub(crate) const HEIGHT: u32 = 1080;
