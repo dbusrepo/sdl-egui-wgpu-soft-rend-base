@@ -2,6 +2,7 @@ use derive_builder::Builder;
 use smartstring::alias::String;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[allow(dead_code)]
 pub(super) enum InputActionBehavior {
     Normal,
     DetectRepeat,
