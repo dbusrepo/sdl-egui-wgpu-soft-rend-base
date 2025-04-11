@@ -1,4 +1,5 @@
 use derive_builder::Builder;
+use smartstring::alias::String;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub(super) enum InputActionBehavior {
