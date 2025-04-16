@@ -24,8 +24,7 @@ use wgpu::{
     TextureViewDescriptor,
 };
 
-#[derive(Debug, Clone)]
-pub(super) struct SdlWgpuConfig {
+pub(super) struct SdlWgpuConfiguration {
     pub title:      &'static str,
     pub width:      u32,
     pub height:     u32,
@@ -34,7 +33,7 @@ pub(super) struct SdlWgpuConfig {
 }
 
 pub(super) struct SdlWgpu<'a> {
-    pub cfg:                   Rc<RefCell<SdlWgpuConfig>>,
+    pub cfg:                   Rc<RefCell<SdlWgpuConfiguration>>,
     pub frame:                 Option<SurfaceTexture>,
     pub encoder:               Option<CommandEncoder>,
     pub surface:               Surface<'a>,
@@ -48,8 +47,8 @@ pub(super) struct SdlWgpu<'a> {
 }
 
 impl SdlWgpu<'_> {
-    pub(super) fn new(cfg: Rc<RefCell<SdlWgpuConfig>>) -> Result<Self> {
-        let SdlWgpuConfig { title, width, height, fullscreen, vsync } = *cfg.borrow();
+    pub(super) fn new(cfg: Rc<RefCell<SdlWgpuConfiguration>>) -> Result<Self> {
+        let SdlWgpuConfiguration { title, width, height, fullscreen, vsync } = *cfg.borrow();
 
         let context = sdl2::init().map_err(|e| anyhow!("Failed to create sdl context: {}", e))?;
 

@@ -5,17 +5,16 @@ use anyhow::Result;
 
 use super::sdl_wgpu::SdlWgpu;
 
-#[derive(Debug, Clone)]
-pub(super) struct EngineConfig {}
+pub(super) struct EngineConfiguration {}
 
 pub(super) struct Engine<'a> {
-    cfg:      Rc<RefCell<EngineConfig>>,
+    cfg:      Rc<RefCell<EngineConfiguration>>,
     sdl_wgpu: Rc<RefCell<SdlWgpu<'a>>>,
 }
 
 impl<'a> Engine<'a> {
     pub(super) fn new(
-        cfg: Rc<RefCell<EngineConfig>>, sdl_wgpu: Rc<RefCell<SdlWgpu<'a>>>,
+        cfg: Rc<RefCell<EngineConfiguration>>, sdl_wgpu: Rc<RefCell<SdlWgpu<'a>>>,
     ) -> Result<Self> {
         Ok(Self { cfg, sdl_wgpu })
     }

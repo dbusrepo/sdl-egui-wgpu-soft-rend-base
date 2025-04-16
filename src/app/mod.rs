@@ -19,12 +19,12 @@ mod input_manager;
 mod sdl_wgpu;
 mod terminal;
 
-use engine::{Engine, EngineConfig};
+use engine::{Engine, EngineConfiguration};
 use frame_history::FrameHistory;
 use gui::Gui;
 use input_action::{InputAction, InputActionBuilder};
 use input_manager::InputManager;
-use sdl_wgpu::{SdlWgpu, SdlWgpuConfig};
+use sdl_wgpu::{SdlWgpu, SdlWgpuConfiguration};
 use terminal::clear_terminal;
 
 #[derive(Copy, Clone, Debug, Enum)]
@@ -43,6 +43,26 @@ enum InputActionType {
 }
 
 type InputActionMap = EnumMap<InputActionType, Rc<RefCell<InputAction>>>;
+
+pub(crate) struct AppConfiguration {
+    sdl_wgpu_cfg: Rc<RefCell<SdlWgpuConfiguration>>,
+    engine_cfg:   Rc<RefCell<EngineConfiguration>>,
+    target_fps:   i32,
+}
+
+impl AppConfiguration {
+    pub(crate) fn new(
+        title: &'static str, width: u32, height: u32, fullscreen: bool, vsync: bool,
+        target_fps: i32,
+    ) -> Self {
+        let sdl_wgpu_cfg =
+            Rc::new(RefCell::new(SdlWgpuConfiguration { title, width, height, fullscreen, vsync }));
+
+        let engine_cfg = Rc::new(RefCell::new(EngineConfiguration {}));
+
+        AppConfiguration { sdl_wgpu_cfg, engine_cfg, target_fps }
+    }
+}
 
 struct AppStats {
     frame_history:   FrameHistory,
@@ -63,27 +83,6 @@ pub(crate) struct App<'a> {
     stats:           RefCell<AppStats>,
     perf_frequency:  f64,
     time_multiplier: f64,
-}
-
-#[derive(Clone)]
-pub(crate) struct AppConfiguration {
-    sdl_wgpu_cfg: Rc<RefCell<SdlWgpuConfig>>,
-    engine_cfg:   Rc<RefCell<EngineConfig>>,
-    target_fps:   i32,
-}
-
-impl AppConfiguration {
-    pub(crate) fn new(
-        title: &'static str, width: u32, height: u32, fullscreen: bool, vsync: bool,
-        target_fps: i32,
-    ) -> Self {
-        let sdl_wgpu_cfg =
-            Rc::new(RefCell::new(SdlWgpuConfig { title, width, height, fullscreen, vsync }));
-
-        let engine_cfg = Rc::new(RefCell::new(EngineConfig {}));
-
-        AppConfiguration { sdl_wgpu_cfg, engine_cfg, target_fps }
-    }
 }
 
 pub(crate) enum EventOutcome {

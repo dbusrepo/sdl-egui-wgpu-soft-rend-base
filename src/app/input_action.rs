@@ -20,12 +20,15 @@ enum InputActionState {
 pub(super) struct InputAction {
     #[builder(setter(into))]
     pub name: String,
+
     #[builder(default = "InputActionBehavior::DetectRepeat")]
     behavior: InputActionBehavior,
+
     #[builder(setter(skip), default = "InputActionState::Released")]
-    state:    InputActionState,
+    state: InputActionState,
+
     #[builder(setter(skip), default = "0")]
-    amount:   i32,
+    amount: i32,
 }
 
 impl InputAction {
