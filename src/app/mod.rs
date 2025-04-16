@@ -74,9 +74,9 @@ struct AppStats {
 
 pub(crate) struct App<'a> {
     cfg:             AppConfiguration,
-    sdl_wgpu_rc:     Rc<RefCell<SdlWgpu<'a>>>,
-    platform_rc:     Rc<RefCell<Platform>>,
-    engine_rc:       Rc<RefCell<Engine<'a>>>,
+    sdl_wgpu:        Rc<RefCell<SdlWgpu<'a>>>,
+    platform:        Rc<RefCell<Platform>>,
+    engine:          Rc<RefCell<Engine<'a>>>,
     gui:             RefCell<Gui<'a>>,
     input_actions:   InputActionMap,
     input_manager:   RefCell<InputManager>,
@@ -95,12 +95,11 @@ impl App<'_> {
     const NUM_DELAYS_PER_YIELD: u32 = 16;
 
     pub(crate) fn new(cfg: AppConfiguration) -> Result<Rc<RefCell<Self>>> {
-        let sdl_wgpu_rc = Rc::new(RefCell::new(SdlWgpu::new(cfg.sdl_wgpu_cfg.clone())?));
+        let sdl_wgpu = Rc::new(RefCell::new(SdlWgpu::new(cfg.sdl_wgpu_cfg.clone())?));
 
-        let platform_rc = Rc::new(RefCell::new(Platform::new(sdl_wgpu_rc.borrow().window.size())?));
+        let platform = Rc::new(RefCell::new(Platform::new(sdl_wgpu.borrow().window.size())?));
 
-        let engine_rc =
-            Rc::new(RefCell::new(Engine::new(cfg.engine_cfg.clone(), sdl_wgpu_rc.clone())?));
+        let engine = Rc::new(RefCell::new(Engine::new(cfg.engine_cfg.clone(), sdl_wgpu.clone())?));
 
         let (input_actions, input_manager) = Self::init_input()?;
 
@@ -117,11 +116,11 @@ impl App<'_> {
             update_interval: Self::get_performance_frequency() / 4,
         });
 
-        let app_rc = Rc::new(RefCell::new(App {
+        let app = Rc::new(RefCell::new(App {
             cfg,
-            sdl_wgpu_rc,
-            platform_rc,
-            engine_rc,
+            sdl_wgpu,
+            platform,
+            engine,
             gui: RefCell::new(gui),
             input_actions,
             input_manager: RefCell::new(input_manager),
@@ -131,7 +130,7 @@ impl App<'_> {
             time_multiplier: 1.0,
         }));
 
-        app_rc.borrow().gui.borrow_mut().init_gui(&app_rc);
+        app.borrow().gui.borrow_mut().init_gui(&app);
 
         clear_terminal()?;
         egui_logger::clear_log();
@@ -139,7 +138,7 @@ impl App<'_> {
         log::info!("App initialized");
         log::info!("Number of logical cores: {}", num_cpus::get());
 
-        Ok(app_rc)
+        Ok(app)
     }
 
     fn init_input() -> Result<(InputActionMap, InputManager)> {
@@ -201,7 +200,7 @@ impl App<'_> {
     fn update(&self, frame_period: f64) -> Result<()> {
         self.update_stats();
         let step_time = frame_period * self.time_multiplier;
-        self.engine_rc.borrow_mut().update(step_time)?;
+        self.engine.borrow_mut().update(step_time)?;
         Ok(())
     }
 
@@ -216,13 +215,12 @@ impl App<'_> {
     }
 
     pub(crate) fn start(cfg: AppConfiguration) -> Result<()> {
-        let app_rc = App::new(cfg)?;
-        app_rc.borrow().run()
+        App::new(cfg)?.borrow().run()
     }
 
     fn run(&self) -> Result<()> {
         let mut event_pump = self
-            .sdl_wgpu_rc
+            .sdl_wgpu
             .borrow()
             .context
             .event_pump()
@@ -242,11 +240,11 @@ impl App<'_> {
                 break 'main;
             }
 
-            let App { sdl_wgpu_rc, platform_rc, engine_rc, gui, .. } = self;
+            let App { sdl_wgpu, platform, engine, gui, .. } = self;
 
             {
                 let ctx = {
-                    let mut platform = platform_rc.borrow_mut();
+                    let mut platform = platform.borrow_mut();
                     #[allow(clippy::as_conversions, clippy::cast_precision_loss)]
                     let elapsed_sec =
                         before_time.saturating_sub(start_time) as f64 / self.perf_frequency;
@@ -259,11 +257,11 @@ impl App<'_> {
 
             self.update(frame_period)?;
 
-            sdl_wgpu_rc.borrow_mut().init_render()?;
-            engine_rc.borrow_mut().render()?;
+            sdl_wgpu.borrow_mut().init_render()?;
+            engine.borrow_mut().render()?;
             gui.borrow_mut().render()?;
 
-            sdl_wgpu_rc.borrow_mut().present();
+            sdl_wgpu.borrow_mut().present();
             gui.borrow_mut().clean()?;
 
             let after_time = Self::get_performance_counter();
@@ -337,7 +335,7 @@ impl App<'_> {
     }
 
     fn handle_events(&self, event_pump: &mut EventPump) -> EventOutcome {
-        let ctx = self.platform_rc.borrow_mut().context();
+        let ctx = self.platform.borrow_mut().context();
         // let egui_wants_pointer_input = ctx.wants_pointer_input();
         // let egui_is_context_menu_open = ctx.is_context_menu_open();
         // let egui_wants_keyboard_input = ctx.wants_keyboard_input();
@@ -349,7 +347,7 @@ impl App<'_> {
             input_manager.release_all();
         }
 
-        let mut sdl_wgpu = self.sdl_wgpu_rc.borrow_mut();
+        let mut sdl_wgpu = self.sdl_wgpu.borrow_mut();
 
         // Handle sdl events
         for event in event_pump.poll_iter() {
@@ -383,7 +381,7 @@ impl App<'_> {
             }
 
             // Let the egui platform handle the event
-            self.platform_rc.borrow_mut().handle_event(&event, &sdl_wgpu.context, &sdl_wgpu.video);
+            self.platform.borrow_mut().handle_event(&event, &sdl_wgpu.context, &sdl_wgpu.video);
         }
 
         self.process_input_actions();

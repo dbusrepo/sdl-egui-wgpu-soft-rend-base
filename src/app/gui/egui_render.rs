@@ -61,7 +61,6 @@ impl<'a> EguiRender<'a> {
 
         let SdlWgpu { frame, encoder, .. } = &mut *sdl_wgpu;
 
-        #[allow(clippy::shadow_reuse)]
         let frame = frame.as_ref().context("Failed to get frame")?;
 
         let frame_view = frame.texture.create_view(&TextureViewDescriptor::default());

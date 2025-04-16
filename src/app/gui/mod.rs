@@ -42,35 +42,33 @@ impl<'a> Gui<'a> {
         }
     }
 
-    pub(super) fn init_gui(&mut self, app_rc: &Rc<RefCell<App<'a>>>) {
-        let app_ref = app_rc.borrow();
+    pub(super) fn init_gui(&mut self, app: &Rc<RefCell<App<'a>>>) {
+        self.init_egui_render(app);
+        self.app = Some(Rc::downgrade(app));
+    }
+
+    fn init_egui_render(&mut self, app: &Rc<RefCell<App<'a>>>) {
+        let app = app.borrow();
 
         let egui_pass = Rc::new(RefCell::new(egui_wgpu_backend::RenderPass::new(
-            &app_ref.sdl_wgpu_rc.borrow().device,
-            app_ref.sdl_wgpu_rc.borrow().surface_format,
+            &app.sdl_wgpu.borrow().device,
+            app.sdl_wgpu.borrow().surface_format,
             1,
         )));
 
-        let egui_render =
-            EguiRender::new(egui_pass, app_ref.platform_rc.clone(), app_ref.sdl_wgpu_rc.clone());
+        let egui_render = EguiRender::new(egui_pass, app.platform.clone(), app.sdl_wgpu.clone());
 
         self.egui_render = Some(egui_render);
-        self.app = Some(Rc::downgrade(app_rc));
     }
 
     pub(super) fn show_ui(&mut self, ctx: &egui::Context) -> Result<()> {
         configure_text_styles(ctx);
 
-        let Some(ref app_weak) = self.app else {
-            return Err(anyhow!("App not initialized"));
-        };
+        let app = self.app.as_ref().context("App not initialized")?;
+        let app = app.upgrade().context("App has been dropped")?;
+        let app = app.borrow();
 
-        let Some(app_rc) = app_weak.upgrade() else {
-            return Err(anyhow!("App has been dropped"));
-        };
-
-        let app = app_rc.borrow();
-        // let engine = app.engine_rc.borrow_mut();
+        // let engine = app.engine.borrow_mut();
 
         if self.perf_window_visible {
             Window::new("Performance").show(ctx, |ui| {
