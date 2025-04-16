@@ -8,7 +8,7 @@ mod egui_render;
 use egui::{FontFamily, FontId, TextStyle, Window};
 use egui_render::EguiRender;
 
-use super::App;
+use super::{App, AppStats};
 
 pub(super) struct Gui<'a> {
     app:                 Option<Weak<RefCell<App<'a>>>>,
@@ -74,8 +74,9 @@ impl<'a> Gui<'a> {
 
         if self.perf_window_visible {
             Window::new("Performance").show(ctx, |ui| {
-                ui.label(format!("Mean Frame Time: {:.2} ms", app.mean_frame_time_sec() * 1e3));
-                ui.label(format!("Mean FPS: {:.2}", app.fps()));
+                let AppStats { fps, mean_frame_time, .. } = *app.stats.borrow();
+                ui.label(format!("Mean Frame Time: {:.2} ms", mean_frame_time * 1e3));
+                ui.label(format!("Mean FPS: {fps:.2}"));
             });
         }
 
@@ -90,7 +91,6 @@ impl<'a> Gui<'a> {
             });
         }
 
-        // Window::new("Settings").resizable(true).vscroll(true).show(ctx, |ui| {
         Window::new("Settings").resizable(false).vscroll(false).show(ctx, |ui| {
             if ui.button("Show perf").clicked() {
                 self.perf_window_visible = !self.perf_window_visible;
@@ -98,38 +98,6 @@ impl<'a> Gui<'a> {
             if ui.button("Show log").clicked() {
                 self.log_window_visible = !self.log_window_visible;
             }
-            if ui.button("Press me to add a debug log").clicked() {
-                log::debug!("A Debug Info");
-            }
-
-            // ui.label("This");
-            // ui.label("is");
-            // ui.label("a");
-            // ui.label("long");
-            // ui.label("list");
-            // ui.label("of");
-            // ui.label("labels");
-            // ui.label("to");
-            // ui.label("demonstrate");
-            // ui.label("scrolling!");
-
-            // #[allow(clippy::print_stdout)]
-            // if ui.button("Press me").clicked() {
-            //     // println!("{}", app.get_msg());
-            //     println!("you pressed me!");
-            // }
-
-            // ui.checkbox(&mut self.checkbox1_checked, "checkbox1");
-            // ui.end_row();
-            //     ui.label("Hello, world!");
-            //     if ui.button("Greet").clicked() {
-            //         println!("Hello, world!");
-            //     }
-            //     ui.horizontal(|ui| {
-            //         ui.label("Color: ");
-            //         ui.color_edit_button_rgba_premultiplied(&mut color);
-            //     });
-            //     ui.code_editor(&mut text);
         });
 
         Ok(())

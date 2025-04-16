@@ -17,13 +17,15 @@ mod gui;
 mod input_action;
 mod input_manager;
 mod sdl_wgpu;
+mod terminal;
 
 use engine::Engine;
 use frame_history::FrameHistory;
 use gui::Gui;
 use input_action::{InputAction, InputActionBuilder};
 use input_manager::InputManager;
-use sdl_wgpu::SdlWgpu;
+use sdl_wgpu::{SdlWgpu, SdlWgpuConfig};
+use terminal::clear_terminal;
 
 #[derive(Copy, Clone, Debug, Enum)]
 enum InputActionType {
@@ -42,21 +44,43 @@ enum InputActionType {
 
 type InputActionMap = EnumMap<InputActionType, Rc<RefCell<InputAction>>>;
 
-pub(crate) struct App<'a> {
-    sdl_wgpu_rc:    Rc<RefCell<SdlWgpu<'a>>>,
-    platform_rc:    Rc<RefCell<Platform>>,
-    engine_rc:      Rc<RefCell<Engine<'a>>>,
-    gui:            RefCell<Gui<'a>>,
-    input_actions:  InputActionMap,
-    input_manager:  RefCell<InputManager>,
-    frame_history:  RefCell<FrameHistory>,
-    perf_frequency: f64,
+struct AppStats {
+    frame_history:   FrameHistory,
+    mean_frame_time: f32,
+    fps:             f32,
+    last_update:     u64,
+    update_interval: u64,
 }
 
-#[derive(Clone, Copy)]
+pub(crate) struct App<'a> {
+    cfg:             AppConfiguration,
+    sdl_wgpu_rc:     Rc<RefCell<SdlWgpu<'a>>>,
+    platform_rc:     Rc<RefCell<Platform>>,
+    engine_rc:       Rc<RefCell<Engine<'a>>>,
+    gui:             RefCell<Gui<'a>>,
+    input_actions:   InputActionMap,
+    input_manager:   RefCell<InputManager>,
+    stats:           RefCell<AppStats>,
+    perf_frequency:  f64,
+    time_multiplier: f64,
+}
+
+#[derive(Clone)]
 pub(crate) struct AppConfiguration {
-    pub width:  u32,
-    pub height: u32,
+    sdl_wgpu_cfg: Rc<RefCell<SdlWgpuConfig>>,
+    target_fps:   i32,
+}
+
+impl AppConfiguration {
+    pub(crate) fn new(
+        title: &'static str, width: u32, height: u32, fullscreen: bool, vsync: bool,
+        target_fps: i32,
+    ) -> Self {
+        let sdl_wgpu_cfg =
+            Rc::new(RefCell::new(SdlWgpuConfig { title, width, height, fullscreen, vsync }));
+
+        AppConfiguration { sdl_wgpu_cfg, target_fps }
+    }
 }
 
 pub(crate) enum EventOutcome {
@@ -67,13 +91,9 @@ pub(crate) enum EventOutcome {
 impl App<'_> {
     const MAX_FRAME_SKIPS: u32 = 5;
     const NUM_DELAYS_PER_YIELD: u32 = 16;
-    const TARGET_FPS: f64 = 60.;
-    const TITLE: &'static str = "App";
 
     pub(crate) fn new(cfg: AppConfiguration) -> Result<Rc<RefCell<Self>>> {
-        let AppConfiguration { width, height } = cfg;
-
-        let sdl_wgpu_rc = Rc::new(RefCell::new(SdlWgpu::new(Self::TITLE, width, height)?));
+        let sdl_wgpu_rc = Rc::new(RefCell::new(SdlWgpu::new(cfg.sdl_wgpu_cfg.clone())?));
 
         let platform_rc = Rc::new(RefCell::new(Platform::new(sdl_wgpu_rc.borrow().window.size())?));
 
@@ -86,21 +106,35 @@ impl App<'_> {
         #[allow(clippy::as_conversions, clippy::cast_precision_loss)]
         let frame_history = FrameHistory::new(300, Self::get_performance_frequency() as f32);
 
+        let stats = RefCell::new(AppStats {
+            frame_history,
+            mean_frame_time: 0.0,
+            fps: 0.0,
+            last_update: Self::get_performance_counter(),
+            update_interval: Self::get_performance_frequency() / 4,
+        });
+
         let app_rc = Rc::new(RefCell::new(App {
+            cfg,
             sdl_wgpu_rc,
             platform_rc,
             engine_rc,
             gui: RefCell::new(gui),
             input_actions,
             input_manager: RefCell::new(input_manager),
-            frame_history: RefCell::new(frame_history),
             #[allow(clippy::cast_precision_loss, clippy::as_conversions)]
             perf_frequency: Self::get_performance_frequency() as f64,
+            stats,
+            time_multiplier: 1.0,
         }));
 
         app_rc.borrow().gui.borrow_mut().init_gui(&app_rc);
 
+        clear_terminal()?;
         egui_logger::clear_log();
+
+        log::info!("App initialized");
+        log::info!("Number of logical cores: {}", num_cpus::get());
 
         Ok(app_rc)
     }
@@ -141,33 +175,49 @@ impl App<'_> {
         unsafe { sdl2::sys::SDL_GetPerformanceFrequency() }
     }
 
-    fn mean_frame_time_sec(&self) -> f32 {
-        #[allow(
-            clippy::as_conversions,
-            clippy::cast_possible_truncation,
-            clippy::cast_precision_loss
-        )]
-        let mean_frame_time_sec =
-            (f64::from(self.frame_history.borrow().mean_frame_time()) / self.perf_frequency) as f32;
-        mean_frame_time_sec
+    fn update_stats(&self) {
+        let mut stats = self.stats.borrow_mut();
+        let now = Self::get_performance_counter();
+        #[allow(clippy::arithmetic_side_effects)]
+        if now - stats.last_update >= stats.update_interval {
+            #[allow(
+                clippy::as_conversions,
+                clippy::cast_possible_truncation,
+                clippy::cast_precision_loss
+            )]
+            {
+                stats.mean_frame_time =
+                    (f64::from(stats.frame_history.mean_frame_time()) / self.perf_frequency) as f32;
+
+                stats.fps = (f64::from(stats.frame_history.fps()) * self.perf_frequency) as f32;
+            }
+            stats.last_update = now;
+        }
     }
 
-    fn fps(&self) -> f32 {
-        #[allow(
-            clippy::as_conversions,
-            clippy::cast_possible_truncation,
-            clippy::cast_precision_loss
-        )]
-        let fps = (f64::from(self.frame_history.borrow().fps()) * self.perf_frequency) as f32;
-        fps
-    }
-
-    fn update(&self) -> Result<()> {
-        self.engine_rc.borrow_mut().update()?;
+    fn update(&self, frame_period: f64) -> Result<()> {
+        self.update_stats();
+        let step_time = frame_period * self.time_multiplier;
+        self.engine_rc.borrow_mut().update(step_time)?;
         Ok(())
     }
 
-    pub(crate) fn run(&self) -> Result<()> {
+    fn add_frame_time(&self, before_time: u64, end_time: u64) {
+        #[allow(clippy::arithmetic_side_effects)]
+        let frame_time = end_time - before_time;
+        #[allow(clippy::as_conversions, clippy::cast_precision_loss)]
+        self.stats
+            .borrow_mut()
+            .frame_history
+            .on_new_frame(end_time as f64, Some(frame_time as f32));
+    }
+
+    pub(crate) fn start(cfg: AppConfiguration) -> Result<()> {
+        let app_rc = App::new(cfg)?;
+        app_rc.borrow().run()
+    }
+
+    fn run(&self) -> Result<()> {
         let mut event_pump = self
             .sdl_wgpu_rc
             .borrow()
@@ -175,7 +225,7 @@ impl App<'_> {
             .event_pump()
             .map_err(|e| anyhow!("Failed to get sdl event pump: {}", e))?;
 
-        let frame_period = self.perf_frequency / Self::TARGET_FPS;
+        let frame_period = self.perf_frequency / f64::from(self.cfg.target_fps);
         let start_time = Self::get_performance_counter();
         let mut before_time = start_time;
         let mut over_sleep_time = 0_f64;
@@ -189,7 +239,7 @@ impl App<'_> {
                 break 'main;
             }
 
-            let App { sdl_wgpu_rc, platform_rc, engine_rc, gui, frame_history, .. } = self;
+            let App { sdl_wgpu_rc, platform_rc, engine_rc, gui, .. } = self;
 
             {
                 let ctx = {
@@ -204,7 +254,7 @@ impl App<'_> {
                 gui.borrow_mut().show_ui(&ctx)?;
             }
 
-            self.update()?;
+            self.update(frame_period)?;
 
             sdl_wgpu_rc.borrow_mut().init_render()?;
             engine_rc.borrow_mut().render()?;
@@ -254,16 +304,13 @@ impl App<'_> {
                     end_time = Self::get_performance_counter();
                 }
 
-                let frame_time = end_time - before_time;
-
-                #[allow(clippy::as_conversions, clippy::cast_precision_loss)]
-                frame_history.borrow_mut().on_new_frame(end_time as f64, Some(frame_time as f32));
+                self.add_frame_time(before_time, end_time);
 
                 before_time = end_time;
 
                 let mut skips = 0;
                 while excess_time >= frame_period && skips < Self::MAX_FRAME_SKIPS {
-                    self.update()?;
+                    self.update(frame_period)?;
                     excess_time -= frame_period;
                     skips += 1;
                 }

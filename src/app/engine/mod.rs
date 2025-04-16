@@ -14,7 +14,7 @@ impl<'a> Engine<'a> {
         Ok(Self { sdl_wgpu })
     }
 
-    pub(super) fn update(&mut self) -> Result<()> {
+    pub(super) fn update(&mut self, step_time: f64) -> Result<()> {
         Ok(())
     }
 

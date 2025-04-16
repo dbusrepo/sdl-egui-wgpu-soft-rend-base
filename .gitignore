@@ -11,6 +11,7 @@ rustc-ice*
 
 *.egg-info
 build
+.env
 dist
 */.vscode/*
 *.DS_Store

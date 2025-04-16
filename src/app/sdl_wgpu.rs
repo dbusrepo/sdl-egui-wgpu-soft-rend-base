@@ -1,5 +1,8 @@
 #![allow(unused_results)]
 
+use std::cell::RefCell;
+use std::rc::Rc;
+
 use anyhow::{Context, Result, anyhow};
 use egui_sdl2_platform::sdl2;
 use egui_wgpu_backend::wgpu::{self, Features, Limits};
@@ -21,7 +24,17 @@ use wgpu::{
     TextureViewDescriptor,
 };
 
+#[derive(Debug, Clone)]
+pub(super) struct SdlWgpuConfig {
+    pub title:      &'static str,
+    pub width:      u32,
+    pub height:     u32,
+    pub fullscreen: bool,
+    pub vsync:      bool,
+}
+
 pub(super) struct SdlWgpu<'a> {
+    pub cfg:                   Rc<RefCell<SdlWgpuConfig>>,
     pub frame:                 Option<SurfaceTexture>,
     pub encoder:               Option<CommandEncoder>,
     pub surface:               Surface<'a>,
@@ -35,16 +48,25 @@ pub(super) struct SdlWgpu<'a> {
 }
 
 impl SdlWgpu<'_> {
-    pub(super) fn new(title: &str, width: u32, height: u32) -> Result<Self> {
+    pub(super) fn new(cfg: Rc<RefCell<SdlWgpuConfig>>) -> Result<Self> {
+        let SdlWgpuConfig { title, width, height, fullscreen, vsync } = *cfg.borrow();
+
         let context = sdl2::init().map_err(|e| anyhow!("Failed to create sdl context: {}", e))?;
 
         let video = context
             .video()
             .map_err(|e| anyhow::anyhow!("Failed to initialize sdl video subsystem: {}", e))?;
 
-        let window = video.window(title, width, height).metal_view().position_centered().build()?;
-        // .allow_highdpi()
-        // .resizable()
+        let mut window_builder = video.window(title, width, height);
+
+        if fullscreen {
+            window_builder.fullscreen();
+            // window_builder.fullscreen_desktop();
+        } else {
+            window_builder.position_centered();
+        }
+
+        let window = window_builder.allow_highdpi().metal_view().build()?;
 
         let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor::default());
 
@@ -83,8 +105,10 @@ impl SdlWgpu<'_> {
             .copied()
             .context("No surface formats")?;
 
+        let present_mode = if vsync { PresentMode::Fifo } else { PresentMode::Immediate };
+
         let surface_configuration = SurfaceConfiguration {
-            present_mode: PresentMode::Fifo, // vsync enabled
+            present_mode,
             // present_mode: wgpu::PresentMode::AutoVsync,
             format: surface_format,
             alpha_mode: wgpu::CompositeAlphaMode::Opaque,
@@ -97,6 +121,7 @@ impl SdlWgpu<'_> {
         surface.configure(&device, &surface_configuration);
 
         Ok(Self {
+            cfg,
             context,
             window,
             video,
