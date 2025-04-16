@@ -19,7 +19,7 @@ mod input_manager;
 mod sdl_wgpu;
 mod terminal;
 
-use engine::Engine;
+use engine::{Engine, EngineConfig};
 use frame_history::FrameHistory;
 use gui::Gui;
 use input_action::{InputAction, InputActionBuilder};
@@ -68,6 +68,7 @@ pub(crate) struct App<'a> {
 #[derive(Clone)]
 pub(crate) struct AppConfiguration {
     sdl_wgpu_cfg: Rc<RefCell<SdlWgpuConfig>>,
+    engine_cfg:   Rc<RefCell<EngineConfig>>,
     target_fps:   i32,
 }
 
@@ -79,7 +80,9 @@ impl AppConfiguration {
         let sdl_wgpu_cfg =
             Rc::new(RefCell::new(SdlWgpuConfig { title, width, height, fullscreen, vsync }));
 
-        AppConfiguration { sdl_wgpu_cfg, target_fps }
+        let engine_cfg = Rc::new(RefCell::new(EngineConfig {}));
+
+        AppConfiguration { sdl_wgpu_cfg, engine_cfg, target_fps }
     }
 }
 
@@ -97,7 +100,8 @@ impl App<'_> {
 
         let platform_rc = Rc::new(RefCell::new(Platform::new(sdl_wgpu_rc.borrow().window.size())?));
 
-        let engine_rc = Rc::new(RefCell::new(Engine::new(sdl_wgpu_rc.clone())?));
+        let engine_rc =
+            Rc::new(RefCell::new(Engine::new(cfg.engine_cfg.clone(), sdl_wgpu_rc.clone())?));
 
         let (input_actions, input_manager) = Self::init_input()?;
 
