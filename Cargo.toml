@@ -33,6 +33,7 @@ smartstring = "1.0.1"
 clap = { version = "4.5.35", features = ["derive"] }
 num_cpus = "1.16.0"
 dotenv = "0.15.0"
+glam = "0.30.2"
 # lazy_format = "2.0.3"
 # colored = "3.0.0"
 # lru = "0.13.0"
