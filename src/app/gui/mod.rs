@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::rc::{Rc, Weak};
 
-use anyhow::{Context, Result, anyhow};
+use anyhow::{Context, Result};
 use log::Level;
 mod egui_render;
 use egui::{FontFamily, FontId, TextStyle, Window};
