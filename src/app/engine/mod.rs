@@ -21,7 +21,8 @@ pub(super) struct Engine<'a> {
 
 impl<'a> Engine<'a> {
     pub(super) fn new(
-        cfg: Rc<RefCell<EngineConfiguration>>, sdl_wgpu: Rc<RefCell<SdlWgpu<'a>>>,
+        cfg: Rc<RefCell<EngineConfiguration>>,
+        sdl_wgpu: Rc<RefCell<SdlWgpu<'a>>>,
     ) -> Result<Self> {
         let world = World::new()?;
         let renderer = Renderer::new(sdl_wgpu)?;

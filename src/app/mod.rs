@@ -52,7 +52,11 @@ pub(crate) struct AppConfiguration {
 
 impl AppConfiguration {
     pub(crate) fn new(
-        title: &'static str, width: u32, height: u32, fullscreen: bool, vsync: bool,
+        title: &'static str,
+        width: u32,
+        height: u32,
+        fullscreen: bool,
+        vsync: bool,
         target_fps: i32,
     ) -> Self {
         let sdl_wgpu_cfg =

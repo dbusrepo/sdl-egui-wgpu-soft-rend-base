@@ -20,7 +20,8 @@ pub(super) struct EguiRender<'a> {
 
 impl<'a> EguiRender<'a> {
     pub(super) const fn new(
-        egui_pass: Rc<RefCell<RenderPass>>, platform: Rc<RefCell<Platform>>,
+        egui_pass: Rc<RefCell<RenderPass>>,
+        platform: Rc<RefCell<Platform>>,
         sdl_wgpu: Rc<RefCell<SdlWgpu<'a>>>,
     ) -> Self {
         Self { egui_pass, platform, sdl_wgpu, tdelta: None }
