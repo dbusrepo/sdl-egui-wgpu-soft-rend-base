@@ -3,14 +3,14 @@
 cargo-features = ["codegen-backend"]
 
 [package]
-name = "sdl_egui_wgpu_base"
+name = "sdl_egui_wgpu_soft_rend_base"
 version = "0.1.0"
 edition = "2024"
-description = "Base project with sdl2, egui and wgpu for gpu rendering experiments"
+description = "Base project with sdl2, egui and wgpu for software rendering experiments"
 readme = "README.md"
-keywords = ["sdl2", "egui", "wgpu" ]
+keywords = ["sdl2", "egui", "wgpu", "software-rendering"]
 categories = ["graphics"]
-repository = "https://github.com/dbusrepo/sdl_egui_wgpu_base.git"
+repository = ""
 license = ""
 
 [target.'cfg(target_os = "linux")'.dependencies]
@@ -25,6 +25,7 @@ pollster = "0.4.0"
 derive_builder = "0.20.2"
 enum-map = "2.7.3"
 nohash-hasher = "0.2.0"
+bytemuck = "1.21.0"
 log = "0.4.27"
 egui_logger = { git = "https://github.com/dbusrepo/egui_logger", branch = "main" }
 multi_log = "0.1.2"
