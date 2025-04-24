@@ -18,8 +18,8 @@ mod frame_history;
 mod gui;
 mod input_action;
 mod input_manager;
-mod screen_quad;
 pub(crate) mod log_utils;
+mod screen_quad;
 mod sdl_wgpu;
 mod terminal;
 
