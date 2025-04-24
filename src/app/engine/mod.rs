@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 use anyhow::Result;
 
-use super::sdl_wgpu::SdlWgpu;
+use super::screen_quad::ScreenQuad;
 
 mod renderer;
 mod world;
@@ -22,10 +22,10 @@ pub(super) struct Engine<'a> {
 impl<'a> Engine<'a> {
     pub(super) fn new(
         cfg: Rc<RefCell<EngineConfiguration>>,
-        sdl_wgpu: Rc<RefCell<SdlWgpu<'a>>>,
+        screen_quad: ScreenQuad<'a>,
     ) -> Result<Self> {
         let world = World::new()?;
-        let renderer = Renderer::new(sdl_wgpu)?;
+        let renderer = Renderer::new(screen_quad)?;
         Ok(Self { cfg, world, renderer })
     }
 

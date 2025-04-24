@@ -4,12 +4,10 @@ use std::rc::Rc;
 use anyhow::Result;
 
 mod frame_buffer;
-mod screen_quad;
 
 use frame_buffer::FrameBuffer;
-use screen_quad::ScreenQuad;
 
-use crate::app::sdl_wgpu::{SdlWgpu, SdlWgpuConfiguration};
+use crate::app::screen_quad::ScreenQuad;
 
 pub(super) struct Renderer<'a> {
     screen_quad:  ScreenQuad<'a>,
@@ -17,12 +15,8 @@ pub(super) struct Renderer<'a> {
 }
 
 impl<'a> Renderer<'a> {
-    pub(super) fn new(sdl_wgpu: Rc<RefCell<SdlWgpu<'a>>>) -> Result<Self> {
-        let SdlWgpuConfiguration { width, height, .. } = *sdl_wgpu.borrow().cfg.borrow();
-
-        let screen_quad = ScreenQuad::new(sdl_wgpu);
-
-        let frame_buffer = FrameBuffer::new(width, height)?;
+    pub(super) fn new(screen_quad: ScreenQuad<'a>) -> Result<Self> {
+        let frame_buffer = FrameBuffer::new(screen_quad.width(), screen_quad.height())?;
 
         Ok(Self { screen_quad, frame_buffer })
     }

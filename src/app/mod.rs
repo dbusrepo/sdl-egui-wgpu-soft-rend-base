@@ -18,6 +18,7 @@ mod frame_history;
 mod gui;
 mod input_action;
 mod input_manager;
+mod screen_quad;
 mod sdl_wgpu;
 mod terminal;
 
@@ -26,6 +27,7 @@ use frame_history::FrameHistory;
 use gui::Gui;
 use input_action::{InputAction, InputActionBuilder};
 use input_manager::InputManager;
+use screen_quad::ScreenQuad;
 use sdl_wgpu::{SdlWgpu, SdlWgpuConfiguration};
 use terminal::clear_terminal;
 
@@ -107,9 +109,11 @@ impl App<'_> {
 
         let egui_render = EguiRender::new(platform.clone(), sdl_wgpu.clone());
 
+        let screen_quad = ScreenQuad::new(sdl_wgpu.clone());
+
         Self::clear_logs();
 
-        let engine = Rc::new(RefCell::new(Engine::new(cfg.engine_cfg.clone(), sdl_wgpu.clone())?));
+        let engine = Rc::new(RefCell::new(Engine::new(cfg.engine_cfg.clone(), screen_quad)?));
 
         let (input_actions, input_manager) = Self::init_input()?;
 

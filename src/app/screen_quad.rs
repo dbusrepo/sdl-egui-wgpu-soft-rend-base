@@ -265,6 +265,14 @@ impl<'a> ScreenQuad<'a> {
         }
     }
 
+    pub(super) fn width(&self) -> u32 {
+        self.sdl_wgpu.borrow().cfg.borrow().width
+    }
+
+    pub(super) fn height(&self) -> u32 {
+        self.sdl_wgpu.borrow().cfg.borrow().height
+    }
+
     fn update_texture(&self, pixel_data: &[u8]) -> Result<()> {
         let width = self.texture.width();
         let height = self.texture.height();
