@@ -6,12 +6,11 @@
 use anyhow::Result;
 use clap::Parser;
 use dotenv::dotenv;
-use log::LevelFilter;
 #[cfg(target_os = "linux")]
 use tikv_jemallocator::Jemalloc;
 
 mod app;
-use app::{App, AppConfiguration, constants};
+use app::{App, AppConfiguration, constants, log_utils};
 use constants::{HEIGHT, TARGET_FPS, TITLE, WIDTH};
 
 #[cfg(target_os = "linux")]
@@ -54,15 +53,8 @@ impl From<Cli> for AppConfiguration {
     }
 }
 
-fn init_logging() -> Result<()> {
-    let env_logger = Box::new(env_logger::builder().filter_level(LevelFilter::Debug).build());
-    let egui_logger = Box::new(egui_logger::builder().build());
-    multi_log::MultiLogger::init(vec![egui_logger, env_logger], log::Level::Debug)?;
-    Ok(())
-}
-
 fn main() -> Result<()> {
     dotenv().ok();
-    init_logging()?;
+    log_utils::init_logging()?;
     App::start(Cli::parse().into())
 }
