@@ -3,11 +3,10 @@ use std::collections::BTreeMap;
 use std::rc::{Rc, Weak};
 
 use anyhow::{Context, Result};
-use log::Level;
-mod egui_render;
 use egui::{FontFamily, FontId, TextStyle, Window};
-use egui_render::EguiRender;
+use log::Level;
 
+use super::egui_render::EguiRender;
 use super::{App, AppStats};
 
 pub(super) struct Gui<'a> {
@@ -42,22 +41,8 @@ impl<'a> Gui<'a> {
         }
     }
 
-    pub(super) fn init_gui(&mut self, app: &Rc<RefCell<App<'a>>>) {
-        self.init_egui_render(app);
+    pub(super) fn init_gui(&mut self, app: &Rc<RefCell<App<'a>>>, egui_render: EguiRender<'a>) {
         self.app = Some(Rc::downgrade(app));
-    }
-
-    fn init_egui_render(&mut self, app: &Rc<RefCell<App<'a>>>) {
-        let app = app.borrow();
-
-        let egui_pass = Rc::new(RefCell::new(egui_wgpu_backend::RenderPass::new(
-            &app.sdl_wgpu.borrow().device,
-            app.sdl_wgpu.borrow().surface_format,
-            1,
-        )));
-
-        let egui_render = EguiRender::new(egui_pass, app.platform.clone(), app.sdl_wgpu.clone());
-
         self.egui_render = Some(egui_render);
     }
 

@@ -12,23 +12,21 @@ use wgpu::TextureViewDescriptor;
 use crate::app::sdl_wgpu::SdlWgpu;
 
 pub(super) struct EguiRender<'a> {
-    pub egui_pass: Rc<RefCell<RenderPass>>,
     pub platform:  Rc<RefCell<Platform>>,
     pub sdl_wgpu:  Rc<RefCell<SdlWgpu<'a>>>,
+    pub egui_pass: RenderPass,
     tdelta:        Option<TexturesDelta>,
 }
 
 impl<'a> EguiRender<'a> {
-    pub(super) const fn new(
-        egui_pass: Rc<RefCell<RenderPass>>,
-        platform: Rc<RefCell<Platform>>,
-        sdl_wgpu: Rc<RefCell<SdlWgpu<'a>>>,
-    ) -> Self {
-        Self { egui_pass, platform, sdl_wgpu, tdelta: None }
+    pub(super) fn new(platform: Rc<RefCell<Platform>>, sdl_wgpu: Rc<RefCell<SdlWgpu<'a>>>) -> Self {
+        let egui_pass =
+            RenderPass::new(&sdl_wgpu.borrow().device, sdl_wgpu.borrow().surface_format, 1);
+
+        Self { platform, sdl_wgpu, egui_pass, tdelta: None }
     }
 
     pub(super) fn render(&mut self) -> Result<()> {
-        let mut egui_pass = self.egui_pass.borrow_mut();
         let mut platform = self.platform.borrow_mut();
         let mut sdl_wgpu = self.sdl_wgpu.borrow_mut();
 
@@ -49,11 +47,11 @@ impl<'a> EguiRender<'a> {
         // Add the textures to the egui render pass
         let FullOutput { textures_delta, .. } = full_output;
 
-        egui_pass.add_textures(&sdl_wgpu.device, &sdl_wgpu.queue, &textures_delta)?;
+        self.egui_pass.add_textures(&sdl_wgpu.device, &sdl_wgpu.queue, &textures_delta)?;
 
         self.tdelta = Some(textures_delta);
 
-        egui_pass.update_buffers(
+        self.egui_pass.update_buffers(
             &sdl_wgpu.device,
             &sdl_wgpu.queue,
             &paint_jobs,
@@ -66,7 +64,7 @@ impl<'a> EguiRender<'a> {
 
         let frame_view = frame.texture.create_view(&TextureViewDescriptor::default());
 
-        egui_pass.execute(
+        self.egui_pass.execute(
             encoder.as_mut().context("Failed to get the encoder")?,
             &frame_view,
             &paint_jobs,
@@ -78,9 +76,7 @@ impl<'a> EguiRender<'a> {
     }
 
     pub(super) fn clean(&mut self) -> Result<()> {
-        self.egui_pass
-            .borrow_mut()
-            .remove_textures(self.tdelta.take().context("No textures delta")?)?;
+        self.egui_pass.remove_textures(self.tdelta.take().context("No textures delta")?)?;
         Ok(())
     }
 }

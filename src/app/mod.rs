@@ -3,6 +3,7 @@ use std::rc::Rc;
 use std::{thread, time};
 
 use anyhow::{Result, anyhow};
+use egui_render::EguiRender;
 use egui_sdl2_platform::sdl2::EventPump;
 use egui_sdl2_platform::{Platform, sdl2};
 use enum_map::{Enum, EnumMap, enum_map};
@@ -11,6 +12,7 @@ use sdl2::keyboard::Keycode;
 use time::Duration;
 
 pub(crate) mod constants;
+mod egui_render;
 mod engine;
 mod frame_history;
 mod gui;
@@ -103,6 +105,10 @@ impl App<'_> {
 
         let platform = Rc::new(RefCell::new(Platform::new(sdl_wgpu.borrow().window.size())?));
 
+        let egui_render = EguiRender::new(platform.clone(), sdl_wgpu.clone());
+
+        Self::clear_logs();
+
         let engine = Rc::new(RefCell::new(Engine::new(cfg.engine_cfg.clone(), sdl_wgpu.clone())?));
 
         let (input_actions, input_manager) = Self::init_input()?;
@@ -134,15 +140,18 @@ impl App<'_> {
             time_multiplier: 1.0,
         }));
 
-        app.borrow().gui.borrow_mut().init_gui(&app);
-
-        clear_terminal()?;
-        egui_logger::clear_log();
+        app.borrow().gui.borrow_mut().init_gui(&app, egui_render);
 
         log::info!("App initialized");
         log::info!("Number of logical cores: {}", num_cpus::get());
 
         Ok(app)
+    }
+
+    fn clear_logs() {
+        #[allow(clippy::unwrap_used)]
+        clear_terminal().unwrap();
+        egui_logger::clear_log();
     }
 
     fn init_input() -> Result<(InputActionMap, InputManager)> {
