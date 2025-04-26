@@ -7,7 +7,7 @@ impl World {
         Ok(Self {})
     }
 
-    pub(super) fn update(&mut self, step_time: f64) -> Result<()> {
+    pub(super) fn update(&mut self, dt: f32) -> Result<()> {
         Ok(())
     }
 }

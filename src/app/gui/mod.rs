@@ -75,12 +75,8 @@ impl<'a> Gui<'a> {
         }
 
         Window::new("Settings").resizable(false).vscroll(false).show(ctx, |ui| {
-            if ui.button("Show perf").clicked() {
-                self.perf_window_visible = !self.perf_window_visible;
-            }
-            if ui.button("Show log").clicked() {
-                self.log_window_visible = !self.log_window_visible;
-            }
+            ui.checkbox(&mut self.perf_window_visible, "Show perf");
+            ui.checkbox(&mut self.log_window_visible, "Show log");
         });
 
         Ok(())

@@ -191,4 +191,9 @@ impl SdlWgpu<'_> {
             frame.present();
         }
     }
+
+    pub fn set_window_title(&mut self, title: &str) {
+        #[allow(clippy::unwrap_used)]
+        self.window.set_title(title).unwrap();
+    }
 }

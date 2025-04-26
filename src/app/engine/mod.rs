@@ -29,8 +29,8 @@ impl<'a> Engine<'a> {
         Ok(Self { cfg, world, renderer })
     }
 
-    pub(super) fn update(&mut self, step_time: f64) -> Result<()> {
-        self.world.update(step_time)
+    pub(super) fn update(&mut self, dt: f32) -> Result<()> {
+        self.world.update(dt)
     }
 
     pub(super) fn render(&mut self) -> Result<()> {

@@ -76,8 +76,6 @@ struct AppStats {
     frame_history:   FrameHistory,
     mean_frame_time: f32,
     fps:             f32,
-    last_update:     u64,
-    update_interval: u64,
 }
 
 pub(crate) struct App<'a> {
@@ -89,8 +87,7 @@ pub(crate) struct App<'a> {
     input_actions:   InputActionMap,
     input_manager:   RefCell<InputManager>,
     stats:           RefCell<AppStats>,
-    perf_frequency:  f64,
-    time_multiplier: f64,
+    time_multiplier: f32,
 }
 
 pub(crate) enum EventOutcome {
@@ -120,15 +117,9 @@ impl App<'_> {
         let gui = Gui::new();
 
         #[allow(clippy::as_conversions, clippy::cast_precision_loss)]
-        let frame_history = FrameHistory::new(300, Self::get_performance_frequency() as f32);
+        let frame_history = FrameHistory::new(300, 1.0);
 
-        let stats = RefCell::new(AppStats {
-            frame_history,
-            mean_frame_time: 0.0,
-            fps: 0.0,
-            last_update: Self::get_performance_counter(),
-            update_interval: Self::get_performance_frequency() / 4,
-        });
+        let stats = RefCell::new(AppStats { frame_history, mean_frame_time: 0., fps: 0. });
 
         let app = Rc::new(RefCell::new(App {
             cfg,
@@ -139,7 +130,6 @@ impl App<'_> {
             input_actions,
             input_manager: RefCell::new(input_manager),
             #[allow(clippy::cast_precision_loss, clippy::as_conversions)]
-            perf_frequency: Self::get_performance_frequency() as f64,
             stats,
             time_multiplier: 1.0,
         }));
@@ -188,47 +178,24 @@ impl App<'_> {
         unsafe { sdl2::sys::SDL_GetPerformanceFrequency() }
     }
 
-    fn update_stats(&self) {
-        let mut stats = self.stats.borrow_mut();
-        let now = Self::get_performance_counter();
-        #[allow(clippy::arithmetic_side_effects)]
-        if now - stats.last_update >= stats.update_interval {
-            #[allow(
-                clippy::as_conversions,
-                clippy::cast_possible_truncation,
-                clippy::cast_precision_loss
-            )]
-            {
-                stats.mean_frame_time =
-                    (f64::from(stats.frame_history.mean_frame_time()) / self.perf_frequency) as f32;
-
-                stats.fps = (f64::from(stats.frame_history.fps()) * self.perf_frequency) as f32;
-            }
-            stats.last_update = now;
-        }
-    }
-
-    fn update(&self, frame_period: f64) -> Result<()> {
-        self.update_stats();
-        let step_time = frame_period * self.time_multiplier;
-        self.engine.borrow_mut().update(step_time)?;
+    fn update(&self, frame_time_s: f32) -> Result<()> {
+        let dt = frame_time_s * self.time_multiplier;
+        self.process_input_actions(dt);
+        self.engine.borrow_mut().update(dt)?;
         Ok(())
-    }
-
-    fn add_frame_time(&self, before_time: u64, end_time: u64) {
-        #[allow(clippy::arithmetic_side_effects)]
-        let frame_time = end_time - before_time;
-        #[allow(clippy::as_conversions, clippy::cast_precision_loss)]
-        self.stats
-            .borrow_mut()
-            .frame_history
-            .on_new_frame(end_time as f64, Some(frame_time as f32));
     }
 
     pub(crate) fn start(cfg: AppConfiguration) -> Result<()> {
         App::new(cfg)?.borrow().run()
     }
 
+    #[allow(
+        clippy::arithmetic_side_effects,
+        clippy::cast_precision_loss,
+        clippy::as_conversions,
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss
+    )]
     fn run(&self) -> Result<()> {
         let mut event_pump = self
             .sdl_wgpu
@@ -237,14 +204,52 @@ impl App<'_> {
             .event_pump()
             .map_err(|e| anyhow!("Failed to get sdl event pump: {}", e))?;
 
-        let frame_period = self.perf_frequency / f64::from(self.cfg.target_fps);
-        let start_time = Self::get_performance_counter();
-        let mut before_time = start_time;
-        let mut over_sleep_time = 0_f64;
+        let perf_frequency = Self::get_performance_frequency() as f64;
+        let frame_ticks = perf_frequency / f64::from(self.cfg.target_fps);
+        let start_ticks = Self::get_performance_counter();
+        let stats_update_interval = perf_frequency as u64 / 4;
+        let mut last_stats_update = start_ticks;
+        let mut before_ticks = start_ticks;
+        let mut over_sleep_ticks = 0_f64;
         let mut num_delays = 0_u32;
-        let mut excess_time = 0_f64;
-        let mut end_time: u64;
-        let mut _frame_skips = 0_u32;
+        let mut excess_ticks = 0_f64;
+        let mut end_ticks: u64;
+        let mut frame_skips = 0_u32;
+
+        let tick_to_sec = |ticks: f64| -> f64 { ticks / perf_frequency };
+        let tick_to_msec = |ticks: f64| -> f64 { tick_to_sec(ticks) * 1e3 };
+
+        let mut update = || {
+            let mut update_stats = || {
+                let mut stats = self.stats.borrow_mut();
+                let now = Self::get_performance_counter();
+                if now - last_stats_update >= stats_update_interval {
+                    stats.mean_frame_time = stats.frame_history.mean_frame_time();
+                    stats.fps = stats.frame_history.fps();
+                    last_stats_update = now;
+                }
+                self.sdl_wgpu.borrow_mut().set_window_title(
+                    format!(
+                        "{} - FPS: {:.2} - Mean frame time: {:.2} ms",
+                        self.cfg.sdl_wgpu_cfg.borrow().title,
+                        stats.fps,
+                        stats.mean_frame_time * 1e3
+                    )
+                    .as_str(),
+                );
+            };
+
+            update_stats();
+            self.update(tick_to_sec(frame_ticks) as f32)
+        };
+
+        #[allow(clippy::shadow_unrelated)]
+        let update_frame_history = |before_ticks: u64, end_ticks: u64| {
+            let before_time_s = tick_to_sec(before_ticks as f64);
+            let end_time_s = tick_to_sec(end_ticks as f64);
+            let frame_duration_s = (end_time_s - before_time_s) as f32;
+            self.stats.borrow_mut().frame_history.on_new_frame(end_time_s, Some(frame_duration_s));
+        };
 
         'main: loop {
             if let EventOutcome::Quit = self.handle_events(&mut event_pump) {
@@ -257,16 +262,16 @@ impl App<'_> {
                 let ctx = {
                     let mut platform = platform.borrow_mut();
                     #[allow(clippy::as_conversions, clippy::cast_precision_loss)]
-                    let elapsed_sec =
-                        before_time.saturating_sub(start_time) as f64 / self.perf_frequency;
-                    platform.update_time(elapsed_sec);
+                    let elapsed_time_s =
+                        before_ticks.saturating_sub(start_ticks) as f64 / perf_frequency;
+                    platform.update_time(elapsed_time_s);
                     platform.context()
                 };
 
                 gui.borrow_mut().show_ui(&ctx)?;
             }
 
-            self.update(frame_period)?;
+            update()?;
 
             sdl_wgpu.borrow_mut().init_render()?;
             engine.borrow_mut().render()?;
@@ -275,33 +280,26 @@ impl App<'_> {
             sdl_wgpu.borrow_mut().present();
             gui.borrow_mut().clean()?;
 
-            let after_time = Self::get_performance_counter();
+            let after_ticks = Self::get_performance_counter();
 
-            #[allow(
-                clippy::arithmetic_side_effects,
-                clippy::cast_precision_loss,
-                clippy::as_conversions,
-                clippy::cast_possible_truncation,
-                clippy::cast_sign_loss
-            )]
             {
-                let proc_time = (after_time - before_time) as f64 + over_sleep_time;
+                let proc_ticks = (after_ticks - before_ticks) as f64 + over_sleep_ticks;
 
-                if frame_period >= proc_time {
-                    let sleep_time = frame_period - proc_time;
-                    let sleep_ms = ((sleep_time) * 1e3 / self.perf_frequency) as u64;
-                    if sleep_ms > 0 {
-                        thread::sleep(Duration::from_millis(sleep_ms));
+                if frame_ticks >= proc_ticks {
+                    let sleep_ticks = frame_ticks - proc_ticks;
+                    let sleep_time_ms = tick_to_msec(sleep_ticks) as u64;
+                    if sleep_time_ms > 0 {
+                        thread::sleep(Duration::from_millis(sleep_time_ms));
                     }
-                    end_time = Self::get_performance_counter();
-                    over_sleep_time = (end_time - after_time) as f64 - sleep_time;
-                    if over_sleep_time < 0. {
-                        over_sleep_time = 0.0;
+                    end_ticks = Self::get_performance_counter();
+                    over_sleep_ticks = (end_ticks - after_ticks) as f64 - sleep_ticks;
+                    if over_sleep_ticks < 0. {
+                        over_sleep_ticks = 0.;
                         loop {
-                            if (end_time - before_time) as f64 >= frame_period {
+                            if (end_ticks - before_ticks) as f64 >= frame_ticks {
                                 break;
                             }
-                            end_time = Self::get_performance_counter();
+                            end_ticks = Self::get_performance_counter();
                         }
                     }
                     num_delays = 0;
@@ -311,22 +309,22 @@ impl App<'_> {
                         thread::yield_now();
                         num_delays = 0;
                     }
-                    over_sleep_time = 0.0;
-                    excess_time += proc_time - frame_period;
-                    end_time = Self::get_performance_counter();
+                    over_sleep_ticks = 0.;
+                    excess_ticks += proc_ticks - frame_ticks;
+                    end_ticks = Self::get_performance_counter();
                 }
 
-                self.add_frame_time(before_time, end_time);
+                update_frame_history(before_ticks, end_ticks);
 
-                before_time = end_time;
+                before_ticks = end_ticks;
 
                 let mut skips = 0;
-                while excess_time >= frame_period && skips < Self::MAX_FRAME_SKIPS {
-                    self.update(frame_period)?;
-                    excess_time -= frame_period;
+                while excess_ticks >= frame_ticks && skips < Self::MAX_FRAME_SKIPS {
+                    update()?;
+                    excess_ticks -= frame_ticks;
                     skips += 1;
                 }
-                _frame_skips += skips;
+                frame_skips += skips;
             }
         }
 
@@ -337,7 +335,7 @@ impl App<'_> {
         self.input_actions[input_action_type].clone()
     }
 
-    fn process_input_actions(&self) {
+    fn process_input_actions(&self, dt: f32) {
         let press_a = self.get_input_action(InputActionType::ActionA);
         let mut action = press_a.borrow_mut();
         if action.is_pressed() {
@@ -394,8 +392,6 @@ impl App<'_> {
             // Let the egui platform handle the event
             self.platform.borrow_mut().handle_event(&event, &sdl_wgpu.context, &sdl_wgpu.video);
         }
-
-        self.process_input_actions();
 
         EventOutcome::Continue
     }
