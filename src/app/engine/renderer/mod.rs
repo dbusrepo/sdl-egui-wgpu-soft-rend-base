@@ -1,6 +1,3 @@
-use std::cell::RefCell;
-use std::rc::Rc;
-
 use anyhow::Result;
 
 mod frame_buffer;

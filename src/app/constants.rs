@@ -1,4 +1,4 @@
-pub(crate) const TITLE: &str = "My SDL2 WGPU Application";
+pub(crate) const TITLE: &str = "SoftRend Application";
 /// The width of the application window.
 pub(crate) const WIDTH: u32 = 1920;
 /// The height of the application window.
